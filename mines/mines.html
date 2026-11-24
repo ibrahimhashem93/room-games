@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1120">
+<title>الماينز | Vexolabs</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #0b1120; --panel: #151d33; --panel2: #1c2742; --line: #2a3654;
+  --text: #f1f5f9; --muted: #8b98b8;
+  --accent: #f43f5e; --green: #22c55e; --gold: #fbbf24; --cyan: #22d3ee;
+}
+html { direction: rtl; }
+body {
+  font-family: 'Segoe UI', Tahoma, 'Noto Kufi Arabic', Arial, sans-serif;
+  background: radial-gradient(900px 500px at 50% -5%, #1a2547 0%, var(--bg) 55%);
+  color: var(--text); min-height: 100vh;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px;
+  user-select: none; touch-action: manipulation;
+}
+.topbar { display: flex; align-items: center; justify-content: space-between; }
+.brand { font-size: 20px; font-weight: 800; }
+.brand small { display: block; font-size: 10px; color: var(--muted); font-weight: 400; }
+.balance {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: 16px;
+}
+.coin {
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 30%, #fde68a, var(--gold) 65%);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #78350f; font-size: 12px; font-weight: 900;
+  box-shadow: 0 2px 6px rgba(251,191,36,.4);
+}
+.stats { display: flex; gap: 8px; }
+.stat {
+  flex: 1; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 8px 10px; text-align: center;
+}
+.stat-label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+.stat-val { font-size: 16px; font-weight: 800; color: var(--cyan); direction: ltr; display: inline-block; }
+.stat-val.win { color: var(--green); }
+.grid {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 20px; padding: 12px;
+}
+.tile {
+  aspect-ratio: 1; border: 1px solid var(--line); border-radius: 14px;
+  background: linear-gradient(145deg, var(--panel2), #16203c);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; cursor: pointer; transition: transform .12s ease, background .2s;
+  color: transparent;
+}
+.tile:active { transform: scale(.93); }
+.tile.safe {
+  background: radial-gradient(circle at 50% 35%, rgba(34,211,238,.35), rgba(34,211,238,.08));
+  border-color: var(--cyan); color: #fff;
+  animation: pop .25s ease;
+}
+.tile.mine {
+  background: radial-gradient(circle at 50% 35%, rgba(244,63,94,.45), rgba(244,63,94,.12));
+  border-color: var(--accent); color: #fff;
+  animation: shake .35s ease;
+}
+.tile.dim { opacity: .45; color: #fff; }
+@keyframes pop { 0% { transform: scale(.6); } 70% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.grid.locked .tile { cursor: default; }
+.history { display: flex; gap: 6px; flex-wrap: wrap; min-height: 30px; }
+.hist {
+  font-size: 12px; font-weight: 800; padding: 5px 10px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+  direction: ltr;
+}
+.hist.win { color: var(--green); border-color: rgba(34,197,94,.4); }
+.hist.lose { color: var(--accent); border-color: rgba(244,63,94,.4); }
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.bet-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.bet-row { display: flex; gap: 8px; }
+.stepper {
+  width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--panel2); color: var(--text); font-size: 24px; font-weight: 800; cursor: pointer;
+}
+.bet-input {
+  flex: 1; height: 48px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); font-size: 18px; font-weight: 800;
+  text-align: center; outline: none; direction: ltr;
+}
+.bet-input:focus { border-color: var(--cyan); }
+.quick-row { display: flex; gap: 6px; }
+.quick {
+  flex: 1; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel2); color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.mines-label { font-size: 12px; color: var(--muted); }
+.mines-row { display: flex; gap: 6px; }
+.mchip {
+  flex: 1; height: 40px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel2); color: var(--text); font-size: 15px; font-weight: 800; cursor: pointer;
+}
+.mchip.on { border-color: var(--accent); background: rgba(244,63,94,.15); color: #fda4af; }
+.action {
+  height: 54px; border-radius: 16px; border: none; font-size: 18px; font-weight: 800;
+  cursor: pointer; color: #052e16; background: linear-gradient(135deg, #4ade80, var(--green));
+  box-shadow: 0 4px 18px rgba(34,197,94,.35); transition: filter .15s;
+}
+.action:disabled { filter: grayscale(.7) brightness(.6); cursor: default; box-shadow: none; }
+.action.cash { background: linear-gradient(135deg, #fcd34d, var(--gold)); color: #451a03; box-shadow: 0 4px 18px rgba(251,191,36,.35); }
+.note { text-align: center; font-size: 11px; color: var(--muted); line-height: 1.7; padding-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">💣 الماينز<small>Vexolabs — عملات افتراضية</small></div>
+  <div class="balance"><span class="coin">$</span><span id="balance">10,000</span></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><span class="stat-label">المضاعف الحالي</span><span class="stat-val" id="cur-mult">—</span></div>
+  <div class="stat"><span class="stat-label">الربح عند السحب</span><span class="stat-val win" id="cur-win">—</span></div>
+  <div class="stat"><span class="stat-label">المضاعف التالي</span><span class="stat-val" id="next-mult">—</span></div>
+</div>
+
+<div class="grid locked" id="grid"></div>
+
+<div class="history" id="history"></div>
+
+<div class="panel">
+  <div class="bet-label"><span>مبلغ الرهان (عملات افتراضية)</span><span id="bet-hint">الحد الأدنى 10</span></div>
+  <div class="bet-row">
+    <button class="stepper" id="minus" type="button">−</button>
+    <input class="bet-input" id="bet" type="number" inputmode="numeric" min="10" value="100">
+    <button class="stepper" id="plus" type="button">+</button>
+  </div>
+  <div class="quick-row">
+    <button class="quick" data-amt="50" type="button">50</button>
+    <button class="quick" data-amt="100" type="button">100</button>
+    <button class="quick" data-amt="250" type="button">250</button>
+    <button class="quick" data-amt="500" type="button">500</button>
+    <button class="quick" data-amt="all" type="button">الكل</button>
+  </div>
+  <div class="mines-label">عدد الألغام 💣</div>
+  <div class="mines-row" id="mines-row">
+    <button class="mchip" data-m="1" type="button">1</button>
+    <button class="mchip on" data-m="3" type="button">3</button>
+    <button class="mchip" data-m="5" type="button">5</button>
+    <button class="mchip" data-m="10" type="button">10</button>
+    <button class="mchip" data-m="24" type="button">24</button>
+  </div>
+  <button class="action" id="action" type="button">ابدأ الجولة 💣</button>
+</div>
+
+<div class="note">عملات افتراضية للّعب فقط — لا أموال حقيقية ولا مشتريات.<br>المضاعفات محسوبة بنسبة عائد عادلة ومعلنة (RTP في أعلى الكود).</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════════
+   ⚙️ إعداد العائد للاعب (RTP)
+   نسبة العائد الافتراضية 0.97 (97%): يعني التطبيق يحتفظ بحوالي 3%.
+   مضاعف الكشف الآمن رقم k مع M لغم في 25 مربعًا:
+     mult(k) = RTP × C(25,k) / C(25−M,k)
+   عدّل هذا الرقم فقط (بين 0.80 و 0.99) وسيتبعه كل منطق اللعبة.
+   ════════════════════════════════════════════════════════════════ */
+const RTP = 0.97;
+
+const TILES = 25;
+const START_BALANCE = 10000;
+const MIN_BET = 10;
+
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('en-US');
+const comb = (n, k) => { let r = 1; for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1); return r; };
+
+let balance = START_BALANCE;
+let phase = 'idle';        // idle | playing | over
+let bet = 0;
+let mineCount = 3;
+let mines = new Set();
+let safePicks = 0;
+let history = [];
+
+const grid = $('#grid'), balanceEl = $('#balance'), actionBtn = $('#action'),
+      betInput = $('#bet'), historyEl = $('#history'),
+      curMultEl = $('#cur-mult'), curWinEl = $('#cur-win'), nextMultEl = $('#next-mult');
+
+const tileEls = [];
+for (let i = 0; i < TILES; i++) {
+  const t = document.createElement('button');
+  t.type = 'button'; t.className = 'tile'; t.dataset.i = i;
+  t.addEventListener('click', () => pick(i));
+  grid.appendChild(t); tileEls.push(t);
+}
+
+function setBalance(v) { balance = v; balanceEl.textContent = fmt(balance); }
+function getBet() { const v = Math.floor(Number(betInput.value)); return isNaN(v) ? 0 : v; }
+function mult(k) { return k === 0 ? 1 : RTP * comb(TILES, k) / comb(TILES - mineCount, k); }
+function curWin() { return Math.round(bet * mult(safePicks)); }
+
+function renderStats() {
+  if (phase !== 'playing') { curMultEl.textContent = '—'; curWinEl.textContent = '—'; nextMultEl.textContent = '—'; return; }
+  curMultEl.textContent = mult(safePicks).toFixed(2) + 'x';
+  curWinEl.textContent = safePicks > 0 ? fmt(curWin()) : '—';
+  nextMultEl.textContent = (safePicks < TILES - mineCount) ? mult(safePicks + 1).toFixed(2) + 'x' : '—';
+}
+
+function renderAction() {
+  if (phase === 'idle' || phase === 'over') {
+    actionBtn.className = 'action';
+    if (balance < MIN_BET) { actionBtn.textContent = 'شحن مجاني 🎁'; actionBtn.disabled = false; }
+    else {
+      const b = getBet();
+      actionBtn.textContent = 'ابدأ الجولة 💣';
+      actionBtn.disabled = b < MIN_BET || b > balance;
+    }
+  } else {
+    actionBtn.className = 'action cash';
+    actionBtn.disabled = safePicks === 0;
+    actionBtn.textContent = safePicks === 0 ? 'اكشف مربعًا واحدًا على الأقل' : `اسحب ${fmt(curWin())} 💰`;
+  }
+}
+
+function pushHistory(txt, cls) {
+  history.unshift({ txt, cls });
+  if (history.length > 12) history.pop();
+  historyEl.innerHTML = history.map(h => `<span class="hist ${h.cls}">${h.txt}</span>`).join('');
+}
+
+function resetTiles() {
+  tileEls.forEach(t => { t.className = 'tile'; t.textContent = ''; });
+  grid.classList.add('locked');
+}
+
+function startRound() {
+  if (balance < MIN_BET) { setBalance(START_BALANCE); pushHistory('شحن مجاني 🎁', ''); renderAction(); return; }
+  const b = getBet();
+  if (b < MIN_BET || b > balance) { renderAction(); return; }
+  bet = b; setBalance(balance - bet); safePicks = 0;
+  mines = new Set();
+  while (mines.size < mineCount) mines.add(Math.floor(Math.random() * TILES));
+  resetTiles(); grid.classList.remove('locked');
+  phase = 'playing'; renderStats(); renderAction();
+}
+
+function endRound() {
+  phase = 'over'; grid.classList.add('locked');
+  tileEls.forEach((t, i) => {
+    if (mines.has(i) && !t.classList.contains('mine')) { t.classList.add('dim'); t.textContent = '💣'; }
+  });
+  renderStats(); renderAction();
+}
+
+function pick(i) {
+  if (phase !== 'playing') return;
+  const t = tileEls[i];
+  if (t.classList.contains('safe') || t.classList.contains('mine')) return;
+  if (mines.has(i)) {
+    t.classList.add('mine'); t.textContent = '💥';
+    pushHistory(`${mult(safePicks).toFixed(2)}x`, 'lose');
+    endRound(); return;
+  }
+  t.classList.add('safe'); t.textContent = '💎';
+  safePicks++;
+  if (safePicks >= TILES - mineCount) { cashOut(); return; }
+  renderStats(); renderAction();
+}
+
+function cashOut() {
+  if (phase !== 'playing' || safePicks === 0) return;
+  const w = curWin();
+  setBalance(balance + w);
+  pushHistory(`${mult(safePicks).toFixed(2)}x`, 'win');
+  endRound();
+}
+
+actionBtn.addEventListener('click', () => { phase === 'playing' ? cashOut() : startRound(); });
+$('#minus').addEventListener('click', () => { betInput.value = Math.max(MIN_BET, getBet() - 50); renderAction(); });
+$('#plus').addEventListener('click', () => { betInput.value = getBet() + 50; renderAction(); });
+betInput.addEventListener('input', renderAction);
+document.querySelectorAll('.quick').forEach(q => q.addEventListener('click', () => {
+  betInput.value = q.dataset.amt === 'all' ? Math.max(MIN_BET, balance) : q.dataset.amt;
+  renderAction();
+}));
+document.querySelectorAll('.mchip').forEach(c => c.addEventListener('click', () => {
+  if (phase === 'playing') return;
+  document.querySelectorAll('.mchip').forEach(x => x.classList.remove('on'));
+  c.classList.add('on'); mineCount = Number(c.dataset.m);
+}));
+
+resetTiles(); renderAction();
+</script>
+</body>
+</html>
