@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1120">
+<title>عجلة الحظ | Vexolabs</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #0b1120; --panel: #151d33; --panel2: #1c2742; --line: #2a3654;
+  --text: #f1f5f9; --muted: #8b98b8;
+  --accent: #f43f5e; --green: #22c55e; --gold: #fbbf24; --cyan: #22d3ee;
+}
+html { direction: rtl; }
+body {
+  font-family: 'Segoe UI', Tahoma, 'Noto Kufi Arabic', Arial, sans-serif;
+  background: radial-gradient(900px 500px at 50% -5%, #1a2547 0%, var(--bg) 55%);
+  color: var(--text); min-height: 100vh;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px;
+  user-select: none; touch-action: manipulation;
+}
+.topbar { display: flex; align-items: center; justify-content: space-between; }
+.brand { font-size: 20px; font-weight: 800; }
+.brand small { display: block; font-size: 10px; color: var(--muted); font-weight: 400; }
+.balance {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: 16px;
+}
+.coin {
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 30%, #fde68a, var(--gold) 65%);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #78350f; font-size: 12px; font-weight: 900;
+  box-shadow: 0 2px 6px rgba(251,191,36,.4);
+}
+.stage {
+  position: relative;
+  background: linear-gradient(180deg, #101a36 0%, #0b1226 100%);
+  border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+  display: flex; justify-content: center; padding: 10px 0;
+}
+.stage canvas { display: block; direction: ltr; }
+.result-pop {
+  position: absolute; top: 12px; right: 0; left: 0; text-align: center;
+  font-size: 26px; font-weight: 900; opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .2s; transform: translateY(6px);
+  text-shadow: 0 2px 12px rgba(0,0,0,.6); direction: ltr;
+}
+.result-pop.show { opacity: 1; transform: translateY(0); }
+.result-pop.win { color: var(--green); }
+.result-pop.lose { color: var(--accent); }
+.history { display: flex; gap: 6px; flex-wrap: wrap; min-height: 30px; }
+.hist {
+  font-size: 12px; font-weight: 800; padding: 5px 10px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+  direction: ltr;
+}
+.hist.win { color: var(--green); border-color: rgba(34,197,94,.4); }
+.hist.lose { color: var(--accent); border-color: rgba(244,63,94,.4); }
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.bet-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.bet-row { display: flex; gap: 8px; }
+.stepper {
+  width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--panel2); color: var(--text); font-size: 24px; font-weight: 800; cursor: pointer;
+}
+.bet-input {
+  flex: 1; height: 48px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); font-size: 18px; font-weight: 800;
+  text-align: center; outline: none; direction: ltr;
+}
+.bet-input:focus { border-color: var(--cyan); }
+.quick-row { display: flex; gap: 6px; }
+.quick {
+  flex: 1; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel2); color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.action {
+  height: 54px; border-radius: 16px; border: none; font-size: 18px; font-weight: 800;
+  cursor: pointer; color: #052e16; background: linear-gradient(135deg, #4ade80, var(--green));
+  box-shadow: 0 4px 18px rgba(34,197,94,.35); transition: filter .15s;
+}
+.action:disabled { filter: grayscale(.7) brightness(.6); cursor: default; box-shadow: none; }
+.note { text-align: center; font-size: 11px; color: var(--muted); line-height: 1.7; padding-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">🎡 عجلة الحظ<small>Vexolabs — عملات افتراضية</small></div>
+  <div class="balance"><span class="coin">$</span><span id="balance">10,000</span></div>
+</div>
+
+<div class="stage" id="stage">
+  <canvas id="cv"></canvas>
+  <div class="result-pop" id="pop"></div>
+</div>
+
+<div class="history" id="history"></div>
+
+<div class="panel">
+  <div class="bet-label"><span>مبلغ الرهان (عملات افتراضية)</span><span id="bet-hint">الحد الأدنى 10</span></div>
+  <div class="bet-row">
+    <button class="stepper" id="minus" type="button">−</button>
+    <input class="bet-input" id="bet" type="number" inputmode="numeric" min="10" value="100">
+    <button class="stepper" id="plus" type="button">+</button>
+  </div>
+  <div class="quick-row">
+    <button class="quick" data-amt="50" type="button">50</button>
+    <button class="quick" data-amt="100" type="button">100</button>
+    <button class="quick" data-amt="250" type="button">250</button>
+    <button class="quick" data-amt="500" type="button">500</button>
+    <button class="quick" data-amt="all" type="button">الكل</button>
+  </div>
+  <button class="action" id="action" type="button">لفّ العجلة 🎡</button>
+</div>
+
+<div class="note">عملات افتراضية للّعب فقط — لا أموال حقيقية ولا مشتريات.<br>مضاعفات العجلة مُرَحَّلة بحيث يكون متوسط العائد = RTP (في أعلى الكود).</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════════
+   ⚙️ إعداد العائد للاعب (RTP)
+   نسبة العائد الافتراضية 0.97 (97%): يعني التطبيق يحتفظ بحوالي 3%.
+   القطاعات متساوية الاحتمال (1/16). القيم أدناه «قيم أساسية»،
+   والمضاعف المعروض = القيمة × RTP ÷ متوسط القيم الأساسية،
+   فمتوسط العائد الحقيقي يبقى = RTP مهما غيّرت التوزيع.
+   عدّل RTP أو WHEEL_BASE فقط وسيتبعه كل منطق اللعبة.
+   ════════════════════════════════════════════════════════════════ */
+const RTP = 0.97;
+const WHEEL_BASE = [0, 1.2, 0, 1.5, 0, 1.2, 0, 2, 0, 1.5, 0, 1.2, 0, 3, 0, 5];
+
+const START_BALANCE = 10000;
+const MIN_BET = 10;
+
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('en-US');
+
+const N = WHEEL_BASE.length;
+const AVG = WHEEL_BASE.reduce((a, b) => a + b, 0) / N;
+const SCALE = RTP / AVG;
+const MULTS = WHEEL_BASE.map(v => Math.round(v * SCALE * 100) / 100);
+
+let balance = START_BALANCE;
+let spinning = false;
+let rotation = 0;
+let history = [];
+
+const balanceEl = $('#balance'), actionBtn = $('#action'), betInput = $('#bet'),
+      historyEl = $('#history'), popEl = $('#pop'), stage = $('#stage'), cv = $('#cv');
+const ctx = cv.getContext('2d');
+
+let W = 0, R = 0, dpr = 1;
+const SEG = (Math.PI * 2) / N;
+const POINTER = -Math.PI / 2;
+
+function segColor(i) {
+  const m = MULTS[i];
+  if (m === 0) return '#3f1d2b';
+  if (m < 1.5) return i % 2 ? '#1c2742' : '#232f52';
+  if (m < 2.5) return '#0e7490';
+  if (m < 4) return '#b45309';
+  return '#15803d';
+}
+
+function resize() {
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  W = Math.min(stage.clientWidth - 20, 380);
+  cv.width = W * dpr; cv.height = W * dpr;
+  cv.style.width = W + 'px'; cv.style.height = W + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  R = W / 2 - 14;
+  draw();
+}
+
+function draw(flashK) {
+  const c = W / 2;
+  ctx.clearRect(0, 0, W, W);
+  ctx.save();
+  ctx.translate(c, c);
+  ctx.rotate(rotation);
+  for (let i = 0; i < N; i++) {
+    const a0 = i * SEG, a1 = a0 + SEG;
+    const hot = flashK === i;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, R, a0, a1);
+    ctx.closePath();
+    ctx.fillStyle = hot ? '#fbbf24' : segColor(i);
+    ctx.fill();
+    ctx.strokeStyle = hot ? '#fde68a' : '#0b1120';
+    ctx.lineWidth = hot ? 3 : 1.5;
+    ctx.stroke();
+    // النص
+    ctx.save();
+    ctx.rotate(a0 + SEG / 2);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = hot ? '#451a03' : (MULTS[i] === 0 ? '#fda4af' : '#e7ecf7');
+    ctx.font = '800 ' + Math.max(10, R * 0.075) + 'px "Segoe UI", Arial';
+    const label = (MULTS[i] >= 10 ? Math.round(MULTS[i]) : MULTS[i]) + 'x';
+    ctx.fillText(label, R * 0.68, 0);
+    ctx.restore();
+  }
+  // الإطار
+  ctx.beginPath(); ctx.arc(0, 0, R + 4, 0, Math.PI * 2);
+  ctx.strokeStyle = '#2a3654'; ctx.lineWidth = 5; ctx.stroke();
+  // المحور
+  ctx.beginPath(); ctx.arc(0, 0, R * 0.16, 0, Math.PI * 2);
+  const g = ctx.createRadialGradient(-4, -4, 2, 0, 0, R * 0.16);
+  g.addColorStop(0, '#fde68a'); g.addColorStop(1, '#f59e0b');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = '#78350f'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.restore();
+  // المؤشر
+  ctx.beginPath();
+  ctx.moveTo(c - 12, 2); ctx.lineTo(c + 12, 2); ctx.lineTo(c, 26);
+  ctx.closePath();
+  ctx.fillStyle = '#f43f5e';
+  ctx.shadowColor = 'rgba(244,63,94,.7)'; ctx.shadowBlur = 10;
+  ctx.fill(); ctx.shadowBlur = 0;
+}
+
+function setBalance(v) { balance = v; balanceEl.textContent = fmt(balance); }
+function getBet() { const v = Math.floor(Number(betInput.value)); return isNaN(v) ? 0 : v; }
+
+function renderAction() {
+  if (spinning) { actionBtn.textContent = 'العجلة تدور...'; actionBtn.disabled = true; return; }
+  actionBtn.disabled = false;
+  if (balance < MIN_BET) actionBtn.textContent = 'شحن مجاني 🎁';
+  else {
+    const b = getBet();
+    actionBtn.textContent = 'لفّ العجلة 🎡';
+    actionBtn.disabled = b < MIN_BET || b > balance;
+  }
+}
+
+function pushHistory(txt, cls) {
+  history.unshift({ txt, cls });
+  if (history.length > 12) history.pop();
+  historyEl.innerHTML = history.map(h => `<span class="hist ${h.cls}">${h.txt}</span>`).join('');
+}
+
+function spin() {
+  if (spinning) return;
+  if (balance < MIN_BET) { setBalance(START_BALANCE); pushHistory('شحن مجاني 🎁', ''); renderAction(); return; }
+  const b = getBet();
+  if (b < MIN_BET || b > balance) { renderAction(); return; }
+  const bet = b;
+  setBalance(balance - bet);
+  spinning = true; renderAction();
+  popEl.className = 'result-pop';
+
+  const k = Math.floor(Math.random() * N);
+  // زاوية دوران تجعل مركز القطاع k تحت المؤشر
+  const targetMod = ((POINTER - (k + 0.5) * SEG) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+  const curMod = ((rotation % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const delta = ((targetMod - curMod) + Math.PI * 2) % (Math.PI * 2);
+  const fullTurns = (5 + Math.floor(Math.random() * 3)) * Math.PI * 2;
+  const total = fullTurns + delta;
+  const r0 = rotation;
+  const dur = 4200 + Math.random() * 600;
+  const t0 = performance.now();
+
+  function frame(now) {
+    const t = Math.max(0, Math.min(1, (now - t0) / dur));
+    const e = 1 - Math.pow(1 - t, 3);   // easeOutCubic
+    rotation = r0 + total * e;
+    draw();
+    if (t < 1) requestAnimationFrame(frame);
+    else finish(k, bet);
+  }
+  requestAnimationFrame(frame);
+}
+
+function finish(k, bet) {
+  const m = MULTS[k];
+  const win = Math.round(bet * m);
+  setBalance(balance + win);
+  const isWin = m >= 1;
+  pushHistory(m + 'x', isWin ? 'win' : 'lose');
+  popEl.textContent = m === 0 ? '0' : (isWin ? '+' + fmt(win) + ' 🎉' : fmt(win));
+  popEl.className = 'result-pop show ' + (isWin ? 'win' : 'lose');
+  spinning = false; renderAction();
+  // وميض القطاع الفائز
+  let blinks = 0;
+  const iv = setInterval(() => {
+    draw(blinks % 2 === 0 ? k : null);
+    if (++blinks > 5) { clearInterval(iv); draw(); }
+  }, 160);
+}
+
+actionBtn.addEventListener('click', spin);
+$('#minus').addEventListener('click', () => { betInput.value = Math.max(MIN_BET, getBet() - 50); renderAction(); });
+$('#plus').addEventListener('click', () => { betInput.value = getBet() + 50; renderAction(); });
+betInput.addEventListener('input', renderAction);
+document.querySelectorAll('.quick').forEach(q => q.addEventListener('click', () => {
+  betInput.value = q.dataset.amt === 'all' ? Math.max(MIN_BET, balance) : q.dataset.amt;
+  renderAction();
+}));
+window.addEventListener('resize', resize);
+
+resize(); renderAction();
+</script>
+</body>
+</html>
