@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0b1120">
+<title>النرد | Vexolabs</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #0b1120; --panel: #151d33; --panel2: #1c2742; --line: #2a3654;
+  --text: #f1f5f9; --muted: #8b98b8;
+  --accent: #f43f5e; --green: #22c55e; --gold: #fbbf24; --cyan: #22d3ee;
+}
+html { direction: rtl; }
+body {
+  font-family: 'Segoe UI', Tahoma, 'Noto Kufi Arabic', Arial, sans-serif;
+  background: radial-gradient(900px 500px at 50% -5%, #1a2547 0%, var(--bg) 55%);
+  color: var(--text); min-height: 100vh;
+  display: flex; flex-direction: column; gap: 10px; padding: 12px;
+  user-select: none; touch-action: manipulation;
+}
+.topbar { display: flex; align-items: center; justify-content: space-between; }
+.brand { font-size: 20px; font-weight: 800; }
+.brand small { display: block; font-size: 10px; color: var(--muted); font-weight: 400; }
+.balance {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: 16px;
+}
+.coin {
+  width: 22px; height: 22px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 35% 30%, #fde68a, var(--gold) 65%);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #78350f; font-size: 12px; font-weight: 900;
+  box-shadow: 0 2px 6px rgba(251,191,36,.4);
+}
+.stage {
+  background: linear-gradient(180deg, #101a36 0%, #0b1226 100%);
+  border: 1px solid var(--line); border-radius: 20px;
+  padding: 22px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+.roll-num {
+  font-size: 56px; font-weight: 900; direction: ltr; letter-spacing: 1px;
+  transition: color .2s, transform .1s;
+}
+.roll-num.win { color: var(--green); text-shadow: 0 0 30px rgba(34,197,94,.5); }
+.roll-num.lose { color: var(--accent); text-shadow: 0 0 30px rgba(244,63,94,.5); }
+.roll-num.rolling { animation: rumble .08s infinite; color: var(--muted); }
+@keyframes rumble { 0% { transform: translateX(-2px); } 50% { transform: translateX(2px); } 100% { transform: translateY(-2px); } }
+.roll-banner { font-size: 15px; font-weight: 800; min-height: 22px; }
+.roll-banner.win { color: var(--green); }
+.roll-banner.lose { color: var(--accent); }
+.track-wrap { width: 100%; direction: ltr; position: relative; padding-top: 6px; }
+.track {
+  position: relative; height: 18px; border-radius: 999px; overflow: visible;
+  background: rgba(244,63,94,.25); border: 1px solid var(--line);
+}
+.track .zone {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  background: rgba(34,197,94,.4); border-radius: 999px 0 0 999px;
+  border-left: none;
+}
+.marker {
+  position: absolute; top: -7px; width: 4px; height: 32px; border-radius: 2px;
+  background: var(--gold); box-shadow: 0 0 10px rgba(251,191,36,.8);
+  transform: translateX(-50%); transition: left .45s cubic-bezier(.2,.8,.3,1); left: -10px; opacity: 0;
+}
+.marker.show { opacity: 1; }
+.track-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 6px; direction: ltr; }
+.stats { display: flex; gap: 8px; }
+.stat {
+  flex: 1; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 8px 10px; text-align: center;
+}
+.stat-label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+.stat-val { font-size: 16px; font-weight: 800; color: var(--cyan); direction: ltr; display: inline-block; }
+.stat-val.win { color: var(--green); }
+.slider-wrap {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.slider-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.slider-label b { color: var(--text); direction: ltr; }
+input[type="range"] {
+  width: 100%; direction: ltr; height: 34px; -webkit-appearance: none; appearance: none;
+  background: transparent; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 10px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--green), var(--gold), var(--accent));
+  border: 1px solid var(--line);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 28px; height: 28px; border-radius: 50%; margin-top: -10px;
+  background: radial-gradient(circle at 35% 30%, #fff, #cbd5e1);
+  border: 3px solid var(--cyan); box-shadow: 0 2px 10px rgba(34,211,238,.5);
+}
+input[type="range"]::-moz-range-track {
+  height: 10px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--green), var(--gold), var(--accent));
+  border: 1px solid var(--line);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #cbd5e1);
+  border: 3px solid var(--cyan); box-shadow: 0 2px 10px rgba(34,211,238,.5);
+}
+.history { display: flex; gap: 6px; flex-wrap: wrap; min-height: 30px; }
+.hist {
+  font-size: 12px; font-weight: 800; padding: 5px 10px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--muted);
+  direction: ltr;
+}
+.hist.win { color: var(--green); border-color: rgba(34,197,94,.4); }
+.hist.lose { color: var(--accent); border-color: rgba(244,63,94,.4); }
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.bet-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.bet-row { display: flex; gap: 8px; }
+.stepper {
+  width: 48px; height: 48px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--panel2); color: var(--text); font-size: 24px; font-weight: 800; cursor: pointer;
+}
+.bet-input {
+  flex: 1; height: 48px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--bg); color: var(--text); font-size: 18px; font-weight: 800;
+  text-align: center; outline: none; direction: ltr;
+}
+.bet-input:focus { border-color: var(--cyan); }
+.quick-row { display: flex; gap: 6px; }
+.quick {
+  flex: 1; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+  background: var(--panel2); color: var(--text); font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.action {
+  height: 54px; border-radius: 16px; border: none; font-size: 18px; font-weight: 800;
+  cursor: pointer; color: #052e16; background: linear-gradient(135deg, #4ade80, var(--green));
+  box-shadow: 0 4px 18px rgba(34,197,94,.35); transition: filter .15s;
+}
+.action:disabled { filter: grayscale(.7) brightness(.6); cursor: default; box-shadow: none; }
+.note { text-align: center; font-size: 11px; color: var(--muted); line-height: 1.7; padding-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand">🎲 النرد<small>Vexolabs — عملات افتراضية</small></div>
+  <div class="balance"><span class="coin">$</span><span id="balance">10,000</span></div>
+</div>
+
+<div class="stage">
+  <div class="roll-num" id="roll-num">--.--</div>
+  <div class="roll-banner" id="roll-banner">اختر نسبة الفوز وارمِ النرد</div>
+  <div class="track-wrap">
+    <div class="track">
+      <div class="zone" id="zone" style="width:50%"></div>
+      <div class="marker" id="marker"></div>
+    </div>
+    <div class="track-labels"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><span class="stat-label">فرصة الفوز</span><span class="stat-val" id="st-chance">50%</span></div>
+  <div class="stat"><span class="stat-label">اربح لو خرج أقل من</span><span class="stat-val" id="st-target">50.00</span></div>
+  <div class="stat"><span class="stat-label">العائد</span><span class="stat-val" id="st-payout">1.94x</span></div>
+  <div class="stat"><span class="stat-label">الربح المحتمل</span><span class="stat-val win" id="st-win">194</span></div>
+</div>
+
+<div class="slider-wrap">
+  <div class="slider-label"><span>نسبة الفوز / المخاطرة</span><b id="slider-val">50%</b></div>
+  <input type="range" id="chance" min="5" max="95" step="1" value="50">
+</div>
+
+<div class="history" id="history"></div>
+
+<div class="panel">
+  <div class="bet-label"><span>مبلغ الرهان (عملات افتراضية)</span><span id="bet-hint">الحد الأدنى 10</span></div>
+  <div class="bet-row">
+    <button class="stepper" id="minus" type="button">−</button>
+    <input class="bet-input" id="bet" type="number" inputmode="numeric" min="10" value="100">
+    <button class="stepper" id="plus" type="button">+</button>
+  </div>
+  <div class="quick-row">
+    <button class="quick" data-amt="50" type="button">50</button>
+    <button class="quick" data-amt="100" type="button">100</button>
+    <button class="quick" data-amt="250" type="button">250</button>
+    <button class="quick" data-amt="500" type="button">500</button>
+    <button class="quick" data-amt="all" type="button">الكل</button>
+  </div>
+  <button class="action" id="action" type="button">ارمِ النرد 🎲</button>
+</div>
+
+<div class="note">عملات افتراضية للّعب فقط — لا أموال حقيقية ولا مشتريات.<br>العائد = RTP ÷ نسبة الفوز، محسوب بنسبة عائد عادلة ومعلنة (RTP في أعلى الكود).</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════════
+   ⚙️ إعداد العائد للاعب (RTP)
+   نسبة العائد الافتراضية 0.97 (97%): يعني التطبيق يحتفظ بحوالي 3%.
+   العائد عند نسبة فوز c٪: payout = RTP × 100 / c
+   مثال: c=50 → 1.94x | c=25 → 3.88x | c=5 → 19.40x
+   عدّل هذا الرقم فقط (بين 0.80 و 0.99) وسيتبعه كل منطق اللعبة.
+   ════════════════════════════════════════════════════════════════ */
+const RTP = 0.97;
+
+const START_BALANCE = 10000;
+const MIN_BET = 10;
+
+const $ = s => document.querySelector(s);
+const fmt = n => n.toLocaleString('en-US');
+
+let balance = START_BALANCE;
+let rolling = false;
+let history = [];
+
+const balanceEl = $('#balance'), actionBtn = $('#action'), betInput = $('#bet'),
+      historyEl = $('#history'), chanceEl = $('#chance'),
+      rollNum = $('#roll-num'), rollBanner = $('#roll-banner'),
+      zoneEl = $('#zone'), markerEl = $('#marker'), sliderVal = $('#slider-val'),
+      stChance = $('#st-chance'), stTarget = $('#st-target'),
+      stPayout = $('#st-payout'), stWin = $('#st-win');
+
+function setBalance(v) { balance = v; balanceEl.textContent = fmt(balance); }
+function getBet() { const v = Math.floor(Number(betInput.value)); return isNaN(v) ? 0 : v; }
+function getChance() { return Number(chanceEl.value); }
+function payoutMult() { return Math.floor(RTP * 100 / getChance() * 100) / 100; }
+
+function renderStats() {
+  const c = getChance(), m = payoutMult();
+  stChance.textContent = c + '%';
+  stTarget.textContent = c.toFixed(2);
+  stPayout.textContent = m.toFixed(2) + 'x';
+  stWin.textContent = fmt(Math.round(getBet() * m));
+  zoneEl.style.width = c + '%';
+  sliderVal.textContent = c + '%';
+}
+
+function renderAction() {
+  if (rolling) { actionBtn.textContent = 'النرد يدور...'; actionBtn.disabled = true; return; }
+  actionBtn.disabled = false;
+  if (balance < MIN_BET) actionBtn.textContent = 'شحن مجاني 🎁';
+  else {
+    const b = getBet();
+    actionBtn.textContent = 'ارمِ النرد 🎲';
+    actionBtn.disabled = b < MIN_BET || b > balance;
+  }
+}
+
+function pushHistory(txt, cls) {
+  history.unshift({ txt, cls });
+  if (history.length > 12) history.pop();
+  historyEl.innerHTML = history.map(h => `<span class="hist ${h.cls}">${h.txt}</span>`).join('');
+}
+
+function roll() {
+  if (rolling) return;
+  if (balance < MIN_BET) { setBalance(START_BALANCE); pushHistory('شحن مجاني 🎁', ''); renderAction(); return; }
+  const b = getBet();
+  if (b < MIN_BET || b > balance) { renderAction(); return; }
+  setBalance(balance - b);
+  rolling = true; renderAction();
+  rollNum.className = 'roll-num rolling';
+  rollBanner.className = 'roll-banner'; rollBanner.textContent = '...';
+  markerEl.classList.remove('show');
+
+  const c = getChance();
+  const result = Math.round(Math.random() * 10000) / 100;   // 0.00 – 100.00
+  const win = result < c;
+  const m = payoutMult();
+
+  const scramble = setInterval(() => {
+    rollNum.textContent = (Math.random() * 100).toFixed(2);
+  }, 50);
+
+  setTimeout(() => {
+    clearInterval(scramble);
+    rollNum.textContent = result.toFixed(2);
+    rollNum.className = 'roll-num ' + (win ? 'win' : 'lose');
+    markerEl.style.left = Math.min(99, result) + '%';
+    markerEl.classList.add('show');
+    if (win) {
+      const w = Math.round(b * m);
+      setBalance(balance + w);
+      rollBanner.textContent = `فزت! +${fmt(w)} 🎉`;
+      rollBanner.className = 'roll-banner win';
+      pushHistory(`${result.toFixed(2)} · ${m.toFixed(2)}x`, 'win');
+    } else {
+      rollBanner.textContent = 'خسرت — فوق الهدف';
+      rollBanner.className = 'roll-banner lose';
+      pushHistory(`${result.toFixed(2)} · ${m.toFixed(2)}x`, 'lose');
+    }
+    rolling = false; renderStats(); renderAction();
+  }, 800);
+}
+
+actionBtn.addEventListener('click', roll);
+chanceEl.addEventListener('input', () => { markerEl.classList.remove('show'); renderStats(); });
+$('#minus').addEventListener('click', () => { betInput.value = Math.max(MIN_BET, getBet() - 50); renderStats(); renderAction(); });
+$('#plus').addEventListener('click', () => { betInput.value = getBet() + 50; renderStats(); renderAction(); });
+betInput.addEventListener('input', () => { renderStats(); renderAction(); });
+document.querySelectorAll('.quick').forEach(q => q.addEventListener('click', () => {
+  betInput.value = q.dataset.amt === 'all' ? Math.max(MIN_BET, balance) : q.dataset.amt;
+  renderStats(); renderAction();
+}));
+
+renderStats(); renderAction();
+</script>
+</body>
+</html>
