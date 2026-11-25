@@ -1,0 +1,19 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'application'
+}
+
+mainClassName = 'com.vexolabs.zombiesurvivor.lwjgl3.Lwjgl3LauncherKt'
+
+dependencies {
+    implementation project(':core')
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}
+
+compileKotlin { kotlinOptions.jvmTarget = "11" }
+sourceCompatibility = 11
+application { mainClass = mainClassName }
+
+// so Gdx.files.internal finds the shared assets folder when running from Gradle/IDE
+tasks.named('run') { workingDir = rootProject.file('assets') }

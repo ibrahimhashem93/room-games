@@ -1,0 +1,9 @@
+plugins { id 'org.jetbrains.kotlin.jvm' }
+
+dependencies {
+    api "com.badlogicgames.gdx:gdx:$gdxVersion"
+}
+
+compileKotlin { kotlinOptions.jvmTarget = "11" }
+compileTestKotlin { kotlinOptions.jvmTarget = "11" }
+sourceCompatibility = 11
