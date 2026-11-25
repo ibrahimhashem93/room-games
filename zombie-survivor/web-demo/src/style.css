@@ -1,0 +1,24 @@
+.zs-root {
+  background: #0b0d18;
+  color: #e8eaf2;
+  font-family: system-ui, -apple-system, sans-serif;
+  border-radius: 18px;
+  overflow: hidden;
+  padding: 14px 14px 18px;
+}
+.zs-topbar { display: flex; justify-content: center; padding: 4px 0 12px; }
+.zs-brand {
+  font-weight: 800; font-size: 20px; letter-spacing: 2px; color: #ffd34d;
+  display: flex; flex-direction: column; align-items: center; line-height: 1.2;
+}
+.zs-brand small { font-size: 11px; letter-spacing: 1px; color: #8a90ad; font-weight: 500; }
+.zs-stage {
+  position: relative; width: 100%; border-radius: 14px; overflow: hidden;
+  background: #14172a; box-shadow: 0 8px 28px rgba(0,0,0,.5);
+}
+.zs-stage canvas { display: block; width: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+.zs-loading {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #aab; font-size: 15px; letter-spacing: 1px; background: #14172a;
+}
+.zs-hint { text-align: center; color: #8a90ad; font-size: 13px; padding: 12px 8px 0; line-height: 1.5; }
