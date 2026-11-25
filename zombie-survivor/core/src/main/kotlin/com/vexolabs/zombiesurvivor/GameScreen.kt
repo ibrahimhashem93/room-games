@@ -13,10 +13,11 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import com.badlogic.gdx.math.MathUtils
 import com.badlogic.gdx.math.Vector2
+import com.badlogic.gdx.math.Vector3
 import com.badlogic.gdx.utils.Array
 import java.util.EnumMap
 
-class GameScreen : ScreenAdapter() {
+class GameScreen(private val game: ZombieSurvivorGame, private val map: MapDef) : ScreenAdapter() {
 
     private val MAP = 1600f
     private val HERO_SPEED = 170f
@@ -31,29 +32,14 @@ class GameScreen : ScreenAdapter() {
     enum class MonKind(
         val size: Float, val baseHp: Int, val hpPerWave: Int,
         val baseSpeed: Float, val speedPerWave: Float, val maxSpeed: Float,
-        val contactDps: Float, val tex: String, val king: Boolean = false
+        val contactDps: Float, val tex: String, val coins: Int, val king: Boolean = false
     ) {
-        SHAMBLER(80f, 80, 20, 52f, 3f, 95f, 14f, "zombie.png"),
-        RUNNER(64f, 40, 10, 110f, 4f, 170f, 8f, "runner.png"),
-        BRUTE(120f, 260, 50, 34f, 2f, 60f, 30f, "brute.png"),
-        SPITTER(76f, 70, 15, 46f, 3f, 80f, 10f, "spitter.png"),
-        KING_GOLIATH(190f, 1500, 400, 30f, 1f, 45f, 45f, "king-goliath.png", true),
-        KING_BROOD(170f, 1100, 300, 26f, 1f, 40f, 25f, "king-brood.png", true)
-    }
-
-    // ---- weapons ----
-    enum class Weapon(
-        val label: String, val rate: Float, val dmg: Int, val speed: Float,
-        val life: Float, val spread: Float, val pellets: Int,
-        val pierce: Boolean, val aoe: Float, val flame: Boolean, val startAmmo: Int,
-        val icon: String, val tint: Color
-    ) {
-        PISTOL("Pistol", .33f, 34, 700f, 1.1f, .01f, 1, false, 0f, false, -1, "w-pistol.png", Color(1f, .72f, .15f, 1f)),
-        RIFLE("Machine Gun", .20f, 40, 620f, 1.1f, .045f, 1, false, 0f, false, 150, "w-rifle.png", Color(1f, .72f, .15f, 1f)),
-        SHOTGUN("Shotgun", .70f, 16, 560f, .5f, .16f, 6, false, 0f, false, 30, "w-shotgun.png", Color(1f, .55f, .2f, 1f)),
-        SNIPER("Sniper", 1.1f, 150, 900f, 1.4f, .005f, 1, true, 0f, false, 15, "w-sniper.png", Color(.5f, .9f, 1f, 1f)),
-        FLAME("Flamethrower", .05f, 6, 240f, .35f, .22f, 1, false, 0f, true, 200, "w-flame.png", Color(1f, .45f, .1f, 1f)),
-        RPG("RPG Launcher", 1.4f, 90, 380f, 1.6f, .01f, 1, false, 110f, false, 6, "w-rpg.png", Color(.7f, 1f, .5f, 1f))
+        SHAMBLER(80f, 80, 20, 52f, 3f, 95f, 14f, "zombie.png", 1),
+        RUNNER(64f, 40, 10, 110f, 4f, 170f, 8f, "runner.png", 2),
+        BRUTE(120f, 260, 50, 34f, 2f, 60f, 30f, "brute.png", 4),
+        SPITTER(76f, 70, 15, 46f, 3f, 80f, 10f, "spitter.png", 3),
+        KING_GOLIATH(190f, 1500, 400, 30f, 1f, 45f, 45f, "king-goliath.png", 30, true),
+        KING_BROOD(170f, 1100, 300, 26f, 1f, 40f, 25f, "king-brood.png", 30, true)
     }
 
     private data class Monster(
@@ -113,6 +99,7 @@ class GameScreen : ScreenAdapter() {
     private var nextMonId = 1
     private var wave = 0
     private var kills = 0
+    private var coinsRun = 0
     private var waveDelay = 2f
     private var bannerT = 0f
     private var bannerText = ""
@@ -120,16 +107,22 @@ class GameScreen : ScreenAdapter() {
     private var flashT = 0f
     private var time = 0f
     private var gameOver = false
+    private var gameOverT = 0f
+    private var banked = false
+    private var paused = false
 
-    // weapons: ammo per owned weapon (-1 = infinite); start with pistol + rifle
+    // weapons: ammo per owned weapon (-1 = infinite)
     private val ammo = EnumMap<Weapon, Int>(Weapon::class.java)
     private var weapon = Weapon.RIFLE
 
-    // floating left joystick (screen space)
+    // movement input (floating / fixed stick, or follow touch)
     private var movePointer = -1
     private val stickOrigin = Vector2()
     private val stickDelta = Vector2()
     private val STICK_R = 70f
+    private var followPointer = -1
+    private val followWorld = Vector2()
+    private var followActive = false
 
     override fun show() {
         batch = SpriteBatch()
@@ -147,7 +140,7 @@ class GameScreen : ScreenAdapter() {
         wreckTex = Assets.load("wreck.png")
         flashTex = Assets.load("flash.png")
         splatTex = Assets.load("splat.png")
-        mapTex = Assets.load("map.jpg")
+        mapTex = Assets.load(map.textureFile)
         portraitTex = Assets.load("portrait.png")
         bulletTex = Assets.bullet()
         pickupTex = Assets.load("pickup.png")
@@ -160,11 +153,11 @@ class GameScreen : ScreenAdapter() {
 
     private fun placeWrecks() {
         wrecks.clear()
-        wrecks.add(Wreck(420f, 700f, 15f, 0))
-        wrecks.add(Wreck(980f, 620f, -8f, 1))
-        wrecks.add(Wreck(1220f, 980f, 22f, 2))
-        wrecks.add(Wreck(560f, 990f, -18f, 1))
-        wrecks.add(Wreck(1350f, 700f, 5f, 0))
+        var i = 0
+        for (wr in map.wrecks) {
+            wrecks.add(Wreck(wr.first, wr.second, wr.third, i % 3))
+            i++
+        }
     }
 
     private fun addMonster(kind: MonKind, x: Float, y: Float) {
@@ -196,9 +189,9 @@ class GameScreen : ScreenAdapter() {
         val zy = hero.y + MathUtils.sin(a) * d
         val roll = MathUtils.random(100)
         val kind = when {
-            wave >= 4 && roll < 20 -> MonKind.SPITTER
+            wave >= 4 && roll < 20 + map.spitterBias -> MonKind.SPITTER
             wave >= 3 && roll < 35 -> MonKind.BRUTE
-            wave >= 2 && roll < 65 -> MonKind.RUNNER
+            wave >= 2 && roll < 65 + map.runnerBias -> MonKind.RUNNER
             else -> MonKind.SHAMBLER
         }
         addMonster(kind, zx, zy)
@@ -206,27 +199,41 @@ class GameScreen : ScreenAdapter() {
 
     private fun reset() {
         hero.set(MAP / 2, MAP / 2)
-        hp = 100f
+        hp = Save.maxHp
         monsters.clear(); bullets.clear(); splats.clear(); dying.clear()
         globs.clear(); pickups.clear(); explosions.clear()
-        wave = 0; kills = 0; waveDelay = 2f; bannerT = 0f
-        gameOver = false
-        movePointer = -1
+        wave = 0; kills = 0; coinsRun = 0; waveDelay = 2f; bannerT = 0f
+        gameOver = false; gameOverT = 0f; banked = false; paused = false
+        movePointer = -1; followPointer = -1; followActive = false
         ammo.clear()
-        ammo[Weapon.PISTOL] = -1
-        ammo[Weapon.RIFLE] = Weapon.RIFLE.startAmmo
-        weapon = Weapon.RIFLE
+        for (w in Weapon.values()) if (Save.weaponUnlocked(w)) ammo[w] = w.startAmmo
+        weapon = if (ammo.containsKey(Weapon.RIFLE)) Weapon.RIFLE else Weapon.PISTOL
         fireTimer = 0f; flashT = 0f
     }
 
+    private fun bankCoins() {
+        if (banked) return
+        banked = true
+        Save.coins = Save.coins + coinsRun
+        if (wave > Save.bestWave) Save.bestWave = wave
+    }
+
     private fun pollJoystick() {
+        if (Save.control == 2) { pollFollow(); return }
         if (movePointer != -1 && !Gdx.input.isTouched(movePointer)) {
             movePointer = -1
             stickDelta.setZero()
         }
         if (movePointer == -1) {
             for (i in 0..4) {
-                if (Gdx.input.isTouched(i) && Gdx.input.getX(i) < Gdx.graphics.width / 2) {
+                if (Gdx.input.isTouched(i) && Gdx.input.getY(i) > 70 &&
+                    (Save.control == 1 || Gdx.input.getX(i) < Gdx.graphics.width / 2)
+                ) {
+                    if (Save.control == 1) {
+                        val fx = 110f; val fy = (Gdx.graphics.height - 100).toFloat()
+                        val dx = Gdx.input.getX(i) - fx; val dy = Gdx.input.getY(i) - fy
+                        if (dx * dx + dy * dy > 160f * 160f) continue
+                    }
                     movePointer = i
                     stickOrigin.set(Gdx.input.getX(i).toFloat(), Gdx.input.getY(i).toFloat())
                     stickDelta.setZero()
@@ -235,11 +242,34 @@ class GameScreen : ScreenAdapter() {
             }
         }
         if (movePointer != -1) {
+            if (Save.control == 1) {
+                stickOrigin.set(110f, (Gdx.graphics.height - 100).toFloat())
+            }
             stickDelta.set(
                 Gdx.input.getX(movePointer) - stickOrigin.x,
                 Gdx.input.getY(movePointer) - stickOrigin.y
             )
             if (stickDelta.len() > STICK_R) stickDelta.setLength(STICK_R)
+        }
+    }
+
+    private fun pollFollow() {
+        if (followPointer != -1 && !Gdx.input.isTouched(followPointer)) {
+            followPointer = -1
+            followActive = false
+        }
+        if (followPointer == -1) {
+            for (i in 0..4) {
+                if (Gdx.input.isTouched(i) && Gdx.input.getY(i) > 70) {
+                    followPointer = i
+                    break
+                }
+            }
+        }
+        if (followPointer != -1) {
+            val v = cam.unproject(Vector3(Gdx.input.getX(followPointer).toFloat(), Gdx.input.getY(followPointer).toFloat(), 0f))
+            followWorld.set(v.x, v.y)
+            followActive = true
         }
     }
 
@@ -259,24 +289,53 @@ class GameScreen : ScreenAdapter() {
             if (Gdx.input.isKeyJustPressed(k) && i < owned.size) { weapon = owned[i]; fireTimer = 0f }
         }
         // tap on the weapon HUD zone (top-center) cycles on touch screens
-        if (Gdx.input.justTouched() && movePointer == -1) {
+        if (Gdx.input.justTouched() && movePointer == -1 && followPointer == -1) {
             val tx = Gdx.input.x.toFloat()
             val ty = Gdx.input.y.toFloat()
             val w = Gdx.graphics.width.toFloat()
-            if (tx > w / 2 - 150 && tx < w / 2 + 150 && ty < 70) cycleWeapon()
+            if (tx > w / 2 - 150 && tx < w / 2 + 150 && tx < w - 70 && ty < 70) cycleWeapon()
         }
     }
 
     override fun render(delta: Float) {
         val dt = delta.coerceAtMost(0.05f)
-        time += dt
-        pollJoystick()
+        val scrW = Gdx.graphics.width.toFloat()
+        val scrH = Gdx.graphics.height.toFloat()
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.BACK) || Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            if (gameOver) { bankCoins(); game.go(MenuScreen(game)); return }
+            paused = !paused
+        }
 
         if (gameOver) {
-            if (Gdx.input.justTouched()) reset()
+            gameOverT += dt
+            bankCoins()
+            if (gameOverT > 0.9f && Gdx.input.justTouched()) { game.go(MenuScreen(game)); return }
+        } else if (paused) {
+            if (Gdx.input.justTouched()) {
+                val tx = Gdx.input.x.toFloat()
+                val tyUp = scrH - Gdx.input.y.toFloat()
+                val bw = minOf(320f, scrW * 0.72f)
+                val bx = scrW / 2 - bw / 2
+                val resume = Btn(bx, scrH / 2 + 20f, bw, 58f, "RESUME")
+                val restart = Btn(bx, scrH / 2 - 56f, bw, 58f, "RESTART")
+                val quit = Btn(bx, scrH / 2 - 132f, bw, 58f, "QUIT TO MENU")
+                when {
+                    Ui.hit(resume, tx, tyUp) -> paused = false
+                    Ui.hit(restart, tx, tyUp) -> { bankCoins(); reset(); placeWrecks() }
+                    Ui.hit(quit, tx, tyUp) -> { bankCoins(); game.go(MenuScreen(game)); return }
+                }
+            }
         } else {
-            pollWeaponKeys()
-            update(dt)
+            // pause button (top-right corner)
+            if (Gdx.input.justTouched() && Gdx.input.x > scrW - 64 && Gdx.input.y < 64) {
+                paused = true
+            } else {
+                time += dt
+                pollJoystick()
+                pollWeaponKeys()
+                update(dt)
+            }
         }
 
         Gdx.gl.glClearColor(0.05f, 0.06f, 0.10f, 1f)
@@ -395,7 +454,7 @@ class GameScreen : ScreenAdapter() {
         }
 
         // hero (idle / walk / fire sheets by state, walk bob while moving)
-        val moving = stickDelta.len2() > 25f
+        val moving = stickDelta.len2() > 25f || followActive || keyMoveActive()
         val bob = if (moving) MathUtils.sin(time * 12f) * 4.5f else 0f
         var sheet = heroTex
         var fps = 10f
@@ -421,22 +480,32 @@ class GameScreen : ScreenAdapter() {
         batch.end()
 
         drawHud()
+
+        if (paused && !gameOver) drawPauseOverlay()
     }
+
+    private fun keyMoveActive(): Boolean =
+        Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.D) ||
+        Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.S) ||
+        Gdx.input.isKeyPressed(Input.Keys.LEFT) || Gdx.input.isKeyPressed(Input.Keys.RIGHT) ||
+        Gdx.input.isKeyPressed(Input.Keys.UP) || Gdx.input.isKeyPressed(Input.Keys.DOWN)
 
     private fun monsterAngle(z: Monster): Float =
         MathUtils.atan2(hero.y - z.y, hero.x - z.x) * MathUtils.radiansToDegrees
 
     private fun fireOnce(baseAngle: Float) {
         val w = weapon
+        val dmg = (w.dmg * Save.dmgMul).toInt().coerceAtLeast(1)
         repeat(w.pellets) {
             val a = baseAngle + MathUtils.random(-w.spread, w.spread)
             bullets.add(Bullet(
                 hero.x + MathUtils.cos(a) * 40f, hero.y + MathUtils.sin(a) * 40f,
                 MathUtils.cos(a) * w.speed, MathUtils.sin(a) * w.speed, w.life,
-                w.dmg, w.pierce, w.aoe, w.flame
+                dmg, w.pierce, w.aoe, w.flame
             ))
         }
         flashT = 0.06f
+        Sfx.shoot(w)
         if (ammo[weapon] != -1) {
             val left = (ammo[weapon] ?: 0) - 1
             ammo[weapon] = left
@@ -449,6 +518,7 @@ class GameScreen : ScreenAdapter() {
 
     private fun explode(x: Float, y: Float, radius: Float, dmg: Int) {
         explosions.add(Explosion(x, y, 0f, radius))
+        Sfx.boom()
         for (z in monsters) {
             if (Vector2.dst2(x, y, z.x, z.y) < radius * radius) {
                 z.hp -= dmg
@@ -458,10 +528,29 @@ class GameScreen : ScreenAdapter() {
     }
 
     private fun update(dt: Float) {
-        // movement (screen y is down, world y is up)
-        if (stickDelta.len2() > 25f) {
-            hero.x += stickDelta.x / STICK_R * HERO_SPEED * dt
-            hero.y -= stickDelta.y / STICK_R * HERO_SPEED * dt
+        // movement: stick, follow-touch, or keyboard; speed from shop upgrades
+        var mx = 0f
+        var my = 0f
+        if (Save.control == 2) {
+            if (followActive) {
+                val dx = followWorld.x - hero.x
+                val dy = followWorld.y - hero.y
+                val d = Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
+                if (d > 14f) { mx = dx / d; my = dy / d } else followActive = false
+            }
+        } else if (stickDelta.len2() > 25f) {
+            mx = stickDelta.x / STICK_R
+            my = -stickDelta.y / STICK_R
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) mx -= 1f
+        if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) mx += 1f
+        if (Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.UP)) my += 1f
+        if (Gdx.input.isKeyPressed(Input.Keys.S) || Gdx.input.isKeyPressed(Input.Keys.DOWN)) my -= 1f
+        if (mx != 0f || my != 0f) {
+            val len = Math.sqrt((mx * mx + my * my).toDouble()).toFloat().coerceAtLeast(0.001f)
+            val speed = HERO_SPEED * Save.speedMul
+            hero.x += mx / len * speed * dt * len.coerceAtMost(1f)
+            hero.y += my / len * speed * dt * len.coerceAtMost(1f)
             hero.x = hero.x.coerceIn(40f, MAP - 40)
             hero.y = hero.y.coerceIn(40f, MAP - 40)
         }
@@ -482,8 +571,8 @@ class GameScreen : ScreenAdapter() {
                 val a = MathUtils.atan2(target.y - hero.y, target.x - hero.x)
                 fireOnce(a)
             }
-        } else if (stickDelta.len2() > 25f) {
-            heroAngle = MathUtils.atan2(-stickDelta.y, stickDelta.x) * MathUtils.radiansToDegrees
+        } else if (mx != 0f || my != 0f) {
+            heroAngle = MathUtils.atan2(my, mx) * MathUtils.radiansToDegrees
         }
 
         // bullets
@@ -542,6 +631,7 @@ class GameScreen : ScreenAdapter() {
                     if (z.slamT <= 0f && d < 170f) {
                         z.slamT = 4f
                         explosions.add(Explosion(z.x, z.y, 0f, 200f))
+                        Sfx.boom()
                         if (d < 200f) hp -= 30f
                     }
                     z.summonT -= dt
@@ -600,6 +690,8 @@ class GameScreen : ScreenAdapter() {
                 dying.add(Dying(z.x, z.y, monsterAngle(z), 0f, z.kind))
                 monsters.removeIndex(i)
                 kills++
+                coinsRun += z.kind.coins
+                Sfx.kill()
                 // drops: kings always drop 2 weapon crates; regulars 18%
                 if (z.kind.king) {
                     repeat(2) { dropPickup(z.x + MathUtils.random(-50f, 50f), z.y + MathUtils.random(-50f, 50f)) }
@@ -667,11 +759,12 @@ class GameScreen : ScreenAdapter() {
         if (hp <= 0f) {
             hp = 0f
             gameOver = true
+            gameOverT = 0f
         }
     }
 
     private fun dropPickup(x: Float, y: Float) {
-        // drop a weapon the player does not own yet, otherwise ammo for a random owned non-pistol weapon
+        // drop a weapon the player does not hold yet, otherwise ammo for a random held non-pistol weapon
         val notOwned = Weapon.values().filter { !ammo.containsKey(it) }
         if (notOwned.isNotEmpty()) {
             val w = notOwned.random()
@@ -710,16 +803,24 @@ class GameScreen : ScreenAdapter() {
         Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
         shapes.projectionMatrix = hudCam.combined
         shapes.begin(ShapeRenderer.ShapeType.Filled)
-        capsule(86f, h - 46f, 200f, 22f, hp / 100f)
-        shapes.color = Color(1f, 1f, 1f, 0.10f)
-        shapes.circle(110f, 100f, 62f)
-        shapes.color = Color(1f, 1f, 1f, 0.22f)
-        shapes.circle(110f, 100f, 26f)
-        if (movePointer != -1) {
-            shapes.color = Color(1f, 1f, 1f, 0.12f)
-            shapes.circle(stickOrigin.x, h - stickOrigin.y, STICK_R)
-            shapes.color = Color(1f, 1f, 1f, 0.30f)
-            shapes.circle(stickOrigin.x + stickDelta.x, h - stickOrigin.y - stickDelta.y, 26f)
+        capsule(86f, h - 46f, 200f, 22f, hp / Save.maxHp)
+        // pause button (top-right)
+        shapes.color = Color(0.16f, 0.22f, 0.34f, 0.9f)
+        shapes.rect(w - 54f, h - 54f, 44f, 44f)
+        shapes.color = Color(0.9f, 0.9f, 0.95f, 0.9f)
+        shapes.rect(w - 41f, h - 43f, 5f, 22f)
+        shapes.rect(w - 31f, h - 43f, 5f, 22f)
+        if (Save.control != 2) {
+            shapes.color = Color(1f, 1f, 1f, 0.10f)
+            shapes.circle(110f, 100f, 62f)
+            shapes.color = Color(1f, 1f, 1f, 0.22f)
+            shapes.circle(110f, 100f, 26f)
+            if (movePointer != -1) {
+                shapes.color = Color(1f, 1f, 1f, 0.12f)
+                shapes.circle(stickOrigin.x, h - stickOrigin.y, STICK_R)
+                shapes.color = Color(1f, 1f, 1f, 0.30f)
+                shapes.circle(stickOrigin.x + stickDelta.x, h - stickOrigin.y - stickDelta.y, 26f)
+            }
         }
         shapes.end()
 
@@ -727,8 +828,11 @@ class GameScreen : ScreenAdapter() {
         batch.begin()
         batch.draw(portraitTex, 14f, h - 66f, 58f, 58f)
         font.draw(batch, "HP ${hp.toInt()}", 96f, h - 30f)
-        font.draw(batch, "WAVE $wave", w - 130f, h - 22f)
-        font.draw(batch, "KILLS $kills", w - 130f, h - 46f)
+        font.draw(batch, "WAVE $wave", w - 200f, h - 22f)
+        font.draw(batch, "KILLS $kills", w - 200f, h - 46f)
+        font.setColor(1f, 0.85f, 0.3f, 1f)
+        font.draw(batch, "COINS $coinsRun", w - 200f, h - 70f)
+        font.setColor(Color.WHITE)
 
         // weapon HUD: icons of owned weapons, current highlighted, ammo under the current
         val owned = Weapon.values().filter { ammo.containsKey(it) }
@@ -758,15 +862,51 @@ class GameScreen : ScreenAdapter() {
             val t1 = "GAME OVER"
             layout.setText(bigFont, t1)
             bigFont.setColor(0.95f, 0.25f, 0.3f, 1f)
-            bigFont.draw(batch, t1, (w - layout.width) / 2, h / 2 + 60f)
+            bigFont.draw(batch, t1, (w - layout.width) / 2, h / 2 + 90f)
             val t2 = "Waves survived: $wave   Kills: $kills"
             layout.setText(font, t2)
-            font.draw(batch, t2, (w - layout.width) / 2, h / 2)
-            val t3 = "Tap anywhere to restart"
+            font.draw(batch, t2, (w - layout.width) / 2, h / 2 + 30f)
+            val t3 = "Coins earned: +$coinsRun"
             layout.setText(font, t3)
-            font.draw(batch, t3, (w - layout.width) / 2, h / 2 - 36f)
+            font.setColor(1f, 0.85f, 0.3f, 1f)
+            font.draw(batch, t3, (w - layout.width) / 2, h / 2 - 6f)
+            font.setColor(Color.WHITE)
+            if (gameOverT > 0.9f) {
+                val t4 = "Tap anywhere to continue"
+                layout.setText(font, t4)
+                font.draw(batch, t4, (w - layout.width) / 2, h / 2 - 42f)
+            }
         }
         batch.end()
+    }
+
+    private fun drawPauseOverlay() {
+        val w = Gdx.graphics.width.toFloat()
+        val h = Gdx.graphics.height.toFloat()
+        Gdx.gl.glEnable(GL20.GL_BLEND)
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA)
+        shapes.projectionMatrix = hudCam.combined
+        shapes.begin(ShapeRenderer.ShapeType.Filled)
+        shapes.color = Color(0.02f, 0.03f, 0.06f, 0.72f)
+        shapes.rect(0f, 0f, w, h)
+        shapes.end()
+
+        batch.projectionMatrix = hudCam.combined
+        batch.begin()
+        val t = "PAUSED"
+        layout.setText(bigFont, t)
+        bigFont.setColor(0.95f, 0.82f, 0.25f, 1f)
+        bigFont.draw(batch, t, (w - layout.width) / 2, h / 2 + 140f)
+        bigFont.setColor(Color.WHITE)
+        batch.end()
+
+        val bw = minOf(320f, w * 0.72f)
+        val bx = w / 2 - bw / 2
+        Ui.draw(shapes, batch, font, layout, listOf(
+            Btn(bx, h / 2 + 20f, bw, 58f, "RESUME"),
+            Btn(bx, h / 2 - 56f, bw, 58f, "RESTART"),
+            Btn(bx, h / 2 - 132f, bw, 58f, "QUIT TO MENU")
+        ))
     }
 
     override fun resize(width: Int, height: Int) {
